@@ -94,7 +94,7 @@ public class BuildDetailsImpl implements BuildDetails {
     /**
      * @see org.jenkins.plugins.audit2db.model.BuildDetails#getFullName()
      */
-    @Column(nullable = false, unique = false)
+    @Column(nullable = false, unique = true)
     @Override
     public String getFullName() {
 	return fullName;
@@ -374,32 +374,35 @@ public class BuildDetailsImpl implements BuildDetails {
      * @param build
      *            a valid Jenkins build object.
      */
-    public BuildDetailsImpl(final AbstractBuild<?, ?> build) {
-	// this.id = build.getId();
-	this.name = build.getRootBuild().getProject().getDisplayName();
-	this.fullName = build.getFullDisplayName();
-	this.startDate = build.getTime();
+	public BuildDetailsImpl(final AbstractBuild<?, ?> build) {
+		// this.id = build.getId();
+		this.name = build.getRootBuild().getProject().getDisplayName();
+		this.fullName = build.getFullDisplayName();
+		this.startDate = build.getTime();
 
-	final List<CauseAction> actions = build.getActions(CauseAction.class);
-	boolean userFound = false;
-	for (final CauseAction action : actions) {
-	    for (final Cause cause : action.getCauses()) {
-		if (cause instanceof UserIdCause) {
-		    userFound = true;
-		    this.userId = ((UserIdCause) cause).getUserId();
-		    this.userName = ((UserIdCause) cause).getUserName();
-		    break;
+		final List<CauseAction> actions = build.getActions(CauseAction.class);
+		boolean userFound = false;
+		for (final CauseAction action : actions) {
+			for (final Cause cause : action.getCauses()) {
+				if (cause instanceof UserIdCause) {
+					userFound = true;
+					this.userId = ((UserIdCause) cause).getUserId();
+					this.userName = ((UserIdCause) cause).getUserName();
+					break;
+				}
+			}
+			if (userFound) {
+				break;
+			}
 		}
-	    }
-	    if (userFound) {
-			break;
-	    }
+
+		this.node = resolveBuildNode(build.getBuiltOn());
+		this.id = String
+				.format("%s/%s/%s", this.node, this.fullName, build.getId());
+		this.parameters
+				.addAll(resolveBuildParameters(build.getBuildVariables()));
 	}
 
-	this.node = resolveBuildNode(build.getBuiltOn());
-	this.id = String
-		.format("%s/%s/%s", this.node, this.name, build.getId());
-	this.parameters
-		.addAll(resolveBuildParameters(build.getBuildVariables()));
-    }
+	
+	
 }
